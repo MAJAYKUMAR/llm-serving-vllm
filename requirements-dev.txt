@@ -1,0 +1,12 @@
+# Light dependencies for CPU-only development and testing.
+# vLLM is intentionally NOT listed here: app/infrastructure/vllm_engine.py
+# lazy-imports it, so the FastAPI app imports and its health/metrics
+# endpoints can be exercised without a GPU or a vLLM install.
+# Install with: pip install -r requirements-dev.txt
+fastapi>=0.110
+uvicorn[standard]>=0.29
+prometheus-client>=0.20
+pydantic>=2.6
+pytest>=8.0
+httpx>=0.27
+ruff>=0.6
