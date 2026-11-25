@@ -3,11 +3,17 @@
 ``GenerateRequest.max_tokens`` is optional: when omitted, the service
 fills in the ``MAX_TOKENS`` default from Settings, so the default stays
 configurable via environment instead of being baked into the schema.
+
+``GenerateRequest.prompt`` is capped at ``MAX_PROMPT_CHARS`` characters
+(default 4096) so an oversize prompt is rejected with a 422 instead of
+blowing the model's context window and failing deep inside vLLM.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.config import Settings
 
 
 class GenerateRequest(BaseModel):
@@ -18,6 +24,14 @@ class GenerateRequest(BaseModel):
     )
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float = Field(default=0.95, ge=0.0, le=1.0)
+
+    @field_validator("prompt")
+    @classmethod
+    def _check_prompt_length(cls, value: str) -> str:
+        limit = Settings.from_env().max_prompt_chars
+        if len(value) > limit:
+            raise ValueError(f"Prompt exceeds the {limit}-character limit")
+        return value
 
 
 class GenerateResponse(BaseModel):

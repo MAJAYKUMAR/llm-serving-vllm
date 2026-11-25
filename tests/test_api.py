@@ -251,3 +251,36 @@ def test_config_max_concurrent_requests_from_env(monkeypatch):
     monkeypatch.setenv("MAX_CONCURRENT_REQUESTS", "3")
     assert Settings.from_env().max_concurrent_requests == 3
     assert Settings().max_concurrent_requests == 8
+
+
+# ---------------------------------------------------------------------------
+# Prompt length cap (commit: reject oversize prompts with a clear 422)
+# ---------------------------------------------------------------------------
+
+
+def test_generate_rejects_oversize_prompt():
+    resp = client.post("/generate", json={"prompt": "x" * 5000})
+    assert resp.status_code == 422
+    assert "4096" in resp.text
+
+
+def test_generate_accepts_normal_prompt_with_stub_engine(monkeypatch):
+    stub = StubEngine()
+    monkeypatch.setattr(
+        app.state,
+        "generation_service",
+        GenerationService(engine=stub, settings=Settings()),
+    )
+    resp = client.post("/generate", json={"prompt": "Hello"})
+    assert resp.status_code == 200
+    assert resp.json()["text"] == "stub reply"
+
+
+def test_prompt_limit_from_env(monkeypatch):
+    monkeypatch.setenv("MAX_PROMPT_CHARS", "10")
+    assert Settings.from_env().max_prompt_chars == 10
+    assert Settings().max_prompt_chars == 4096
+    resp = client.post("/generate", json={"prompt": "x" * 20})
+    assert resp.status_code == 422
+    resp = client.post("/generate", json={"prompt": "short"})
+    assert resp.status_code == 503  # passes validation, no model loaded

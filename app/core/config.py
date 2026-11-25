@@ -33,6 +33,7 @@ class Settings:
     max_tokens_default: int = 128
     max_tokens_limit: int = 1024
     max_concurrent_requests: int = 8
+    max_prompt_chars: int = 4096
     log_level: str = "INFO"
     load_model_on_startup: bool = False
 
@@ -47,6 +48,9 @@ class Settings:
             max_tokens_limit=_env_int("MAX_TOKENS_LIMIT", cls.max_tokens_limit),
             max_concurrent_requests=_env_int(
                 "MAX_CONCURRENT_REQUESTS", cls.max_concurrent_requests
+            ),
+            max_prompt_chars=_env_int(
+                "MAX_PROMPT_CHARS", cls.max_prompt_chars
             ),
             log_level=os.environ.get("LOG_LEVEL", cls.log_level).upper(),
             load_model_on_startup=_env_bool(

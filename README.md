@@ -32,10 +32,12 @@ app/
                            logging, error translation
   core/                    innermost layer, no external dependencies
     config.py              Settings from env vars (MODEL_NAME, HOST, PORT,
-                           MAX_TOKENS, MAX_TOKENS_LIMIT, LOG_LEVEL,
-                           LOAD_MODEL_ON_STARTUP)
+                           MAX_TOKENS, MAX_TOKENS_LIMIT,
+                           MAX_CONCURRENT_REQUESTS, MAX_PROMPT_CHARS,
+                           LOG_LEVEL, LOAD_MODEL_ON_STARTUP)
     logging.py             structured key=value log lines
-    errors.py              ModelNotLoadedError (503), GenerationError (500)
+    errors.py              ModelNotLoadedError (503), ServerBusyError (503),
+                           GenerationError (500)
     metrics.py             Prometheus counters/histogram
   infrastructure/          adapters to outside systems
     vllm_engine.py         ModelEngine: lazy vLLM import, plain-dataclass
@@ -115,6 +117,16 @@ curl -s -X POST http://localhost:8000/generate \
 
 curl -s http://localhost:8000/metrics | grep llm_requests_total
 ```
+
+`/generate` enforces two request limits: the prompt is capped at
+`MAX_PROMPT_CHARS` characters (default 4096) and `max_tokens` at
+`MAX_TOKENS_LIMIT` (default 1024). Oversize values are rejected with
+a `422` and a plain error message instead of failing inside the model.
+Concurrent generations are capped at `MAX_CONCURRENT_REQUESTS`
+(default 8); when every slot is busy the service answers `503` with
+error code `server_busy`. Every response carries an `X-Request-ID`
+header (echoed when the client sends one) for tracing a request
+through the logs.
 
 ## Docker
 
