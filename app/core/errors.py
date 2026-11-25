@@ -27,6 +27,13 @@ class ModelNotLoadedError(ServiceError):
     code = "model_not_loaded"
 
 
+class ServerBusyError(ServiceError):
+    """All generation slots are in use; the caller should retry later."""
+
+    status_code = 503
+    code = "server_busy"
+
+
 class GenerationError(ServiceError):
     """The engine failed while generating a completion."""
 

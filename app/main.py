@@ -13,6 +13,7 @@ Or:        python -m app
 
 from __future__ import annotations
 
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -24,7 +25,7 @@ from app.core.config import Settings
 from app.core.errors import ServiceError
 from app.core.logging import configure_logging, get_logger
 from app.infrastructure.vllm_engine import ModelEngine
-from app.services.generation import GenerationService
+from app.services.generation import GenerationService, request_id_var
 
 logger = get_logger(__name__)
 
@@ -83,6 +84,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.generation_service = service
     app.add_exception_handler(ServiceError, _service_error_handler)
     app.add_exception_handler(Exception, _unhandled_error_handler)
+
+    @app.middleware("http")
+    async def _request_id_middleware(request: Request, call_next):
+        """Stamp every request with an X-Request-ID and log it.
+
+        Echoes a client-supplied id, otherwise generates one, so a slow
+        request can be traced end-to-end through the structured logs.
+        """
+        request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+        request_id_var.set(request_id)
+        request.state.request_id = request_id
+        logger.info(
+            "request received",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": str(request.url.path),
+            },
+        )
+        response = await call_next(request)
+        response.headers["x-request-id"] = request_id
+        logger.info(
+            "request completed",
+            extra={"request_id": request_id, "status_code": response.status_code},
+        )
+        return response
+
     app.include_router(router)
     return app
 

@@ -32,6 +32,7 @@ class Settings:
     port: int = 8000
     max_tokens_default: int = 128
     max_tokens_limit: int = 1024
+    max_concurrent_requests: int = 8
     log_level: str = "INFO"
     load_model_on_startup: bool = False
 
@@ -44,6 +45,9 @@ class Settings:
             port=_env_int("PORT", cls.port),
             max_tokens_default=_env_int("MAX_TOKENS", cls.max_tokens_default),
             max_tokens_limit=_env_int("MAX_TOKENS_LIMIT", cls.max_tokens_limit),
+            max_concurrent_requests=_env_int(
+                "MAX_CONCURRENT_REQUESTS", cls.max_concurrent_requests
+            ),
             log_level=os.environ.get("LOG_LEVEL", cls.log_level).upper(),
             load_model_on_startup=_env_bool(
                 "LOAD_MODEL_ON_STARTUP", cls.load_model_on_startup
